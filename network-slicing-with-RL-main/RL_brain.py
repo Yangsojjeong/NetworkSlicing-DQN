@@ -53,14 +53,14 @@ class DuelingDQN:
         self.cost_his = []   #학습 중 발생하는 손실(loss) 저장해두는 리스트트
 
     def _build_net(self):         #네트워크 생성 
-        def build_layers(s, c_names, n_l1, w_initializer, b_initializer):
+        def build_layers(s, c_names, n_l1, w_initializer, b_initializer):   #신경망 구조 생성
             with tf.variable_scope('l1'):
                 w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
                 b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
                 l1 = tf.nn.relu(tf.matmul(s, w1) + b1)
 
             if self.dueling:
-                # Dueling DQN
+                # Dueling DQN  (dueling:상태의 가치V(s)와 행동별 이득A(s,a)를 분리해서 학습
                 with tf.variable_scope('Value'):
                     w2 = tf.get_variable('w2', [n_l1, 1], initializer=w_initializer, collections=c_names)
                     b2 = tf.get_variable('b2', [1, 1], initializer=b_initializer, collections=c_names)
@@ -73,7 +73,7 @@ class DuelingDQN:
 
                 with tf.variable_scope('Q'):
                     out = self.V + (self.A - tf.reduce_mean(self.A, axis=1, keep_dims=True))     # Q = V(s) + A(s,a)
-            else:
+            else:   #dueling 사용안함(일반DQN)
                 with tf.variable_scope('Q'):
                     w2 = tf.get_variable('w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
                     b2 = tf.get_variable('b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
@@ -82,33 +82,33 @@ class DuelingDQN:
             return out
 
         # build evaluate_net
-        tf.disable_eager_execution()
+        tf.disable_eager_execution()  #외부 구조:네트워크와 손실함수, 학습연산 정의
         self.s = tf.placeholder(tf.float32, [None, self.n_features], name='s')  # input
         self.q_target = tf.placeholder(tf.float32, [None, self.n_actions], name='Q_target')  # for calculating loss
-        with tf.variable_scope('eval_net'):
+        with tf.variable_scope('eval_net'):   #평가용 네트워크 생성(eval_net)->실제 행동을 선택하고 학습되는 네트워크
             c_names, n_l1, w_initializer, b_initializer = \
                 ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 20, \
                 tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)  # config of layers
 
             self.q_eval = build_layers(self.s, c_names, n_l1, w_initializer, b_initializer)
 
-        with tf.variable_scope('loss'):
+        with tf.variable_scope('loss'):    #손실함수 정의(q_target-q_eval 제곱의 평균)
             self.loss = tf.reduce_mean(tf.squared_difference(self.q_target, self.q_eval))
-        with tf.variable_scope('train'):
+        with tf.variable_scope('train'):   #학습연산 정의(RMSProp 옵티마이저로 손실 최소화)
             self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
 
         #build target_net
-        self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # input
+        self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # input / 다음상태(next state)입력
         with tf.variable_scope('target_net'):
             c_names = ['target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
 
-            self.q_next = build_layers(self.s_, c_names, n_l1, w_initializer, b_initializer)
+            self.q_next = build_layers(self.s_, c_names, n_l1, w_initializer, b_initializer) #target_net에서 계산된 Q(s', a') -> 타겟 Q계산에 사용(학습은 안됨, 고정된 네트워크)
 
-    def store_transition(self, s, a, r, s_):
+    def store_transition(self, s, a, r, s_):  #경험 리플레이 버퍼에 하나의 경험을 저장
         if not hasattr(self, 'memory_counter'): # returns True if the specified object has the specified attribute, otherwise False .
             self.memory_counter = 0
-        transition = np.hstack((s, [a, r], s_))
-        index = self.memory_counter % self.memory_size
+        transition = np.hstack((s, [a, r], s_))  #하나의 경험을 만듦(s:현재상태/a:행동/r:보상/s_:다음상태)
+        index = self.memory_counter % self.memory_size  #memory_size를 넘지 않도록 순환 저장 방식(ex:메모리가 500개면 501번째는 1번째를 덮어씌움)
         #print(self.memory_counter,self.memory_size,index)
         #print(self.memory.shape)
         #print(self.memory)
@@ -116,25 +116,25 @@ class DuelingDQN:
         self.memory[index, :] = transition
         self.memory_counter += 1
 
-    def choose_action(self, observation):
+    def choose_action(self, observation):  #주어진 상태에서 행동 하나 선택(ε-greedy 방식)
         observation = observation[np.newaxis, :]
         if np.random.uniform() < self.epsilon:  # choosing action
             actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation})
             action = np.argmax(actions_value)
         else:
-            action = np.random.randint(0, self.n_actions)
-        return action
+            action = np.random.randint(0, self.n_actions)  #그렇지 않으면 랜덤하게 행동 선택->탐험
+        return action 
 
     def learn(self):
         if self.learn_step_counter % self.replace_target_iter == 0:
             self.sess.run(self.replace_target_op)
-            print('\ntarget_params_replaced\n')
+            print('\ntarget_params_replaced\n')       #일정 횟수마다 target network를 eval network로 교체
 
         sample_index = np.random.choice(self.memory_size, size=self.batch_size)
         batch_memory = self.memory[sample_index, :]
 
-        q_next = self.sess.run(self.q_next, feed_dict={self.s_: batch_memory[:, -self.n_features:]}) # next observation
-        q_eval = self.sess.run(self.q_eval, {self.s: batch_memory[:, :self.n_features]})
+        q_next = self.sess.run(self.q_next, feed_dict={self.s_: batch_memory[:, -self.n_features:]}) # next observation/target_net에서 다음상태(s')의 Q값 계산
+        q_eval = self.sess.run(self.q_eval, {self.s: batch_memory[:, :self.n_features]})  #eval_net에서 현재 상태(s)의 Q값 계산
 
         q_target = q_eval.copy()
 
@@ -142,7 +142,7 @@ class DuelingDQN:
         eval_act_index = batch_memory[:, self.n_features].astype(int)
         reward = batch_memory[:, self.n_features + 1]
 
-        q_target[batch_index, eval_act_index] = reward + self.gamma * np.max(q_next, axis=1)
+        q_target[batch_index, eval_act_index] = reward + self.gamma * np.max(q_next, axis=1)  #벨만 방정식 기반으로 Q타겟 계산
 
         _, self.cost = self.sess.run([self._train_op, self.loss],
                                      feed_dict={self.s: batch_memory[:, :self.n_features],
