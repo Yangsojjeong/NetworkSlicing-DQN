@@ -1,7 +1,7 @@
 
 
-import numpy as np
-import tensorflow.compat.v1 as tf
+import numpy as np  #numpy:수치 연산 라이브러리(np:numpy를 짧게 쓰기 위한 별칭)
+import tensorflow.compat.v1 as tf    #tensorflow:구글에서 만든 머신러닝 라이브러리
 
 np.random.seed(42)
 tf.set_random_seed(42)
@@ -10,18 +10,18 @@ tf.set_random_seed(42)
 class DuelingDQN:
     def __init__(
             self,
-            n_actions,
-            n_features,
-            learning_rate=0.001,
-            reward_decay=0.9,
-            e_greedy=0.9,
-            replace_target_iter=200,
-            memory_size=500,
-            batch_size=32,
-            e_greedy_increment=None,
+            n_actions,  #에이전트가 선택할 수 있는 행동의 개수
+            n_features,  #상태(state)의 특징 수
+            learning_rate=0.001,   #학습률
+            reward_decay=0.9,    #감가율(할인율)
+            e_greedy=0.9,   #e-greedy 정책에서 행동 선택 시 랜덤이 아닐 확률
+            replace_target_iter=200,   #몇 번 학습마다 target네트워크를 갱신할지
+            memory_size=500,  #경험을 저장하는 버퍼 크기
+            batch_size=32,   #학습할 때 샘플링할 미니배치 크기
+            e_greedy_increment=None, #e증가값
             output_graph=False,
-            dueling=True,
-            sess=None,
+            dueling=True,   #Dueling 구조를 사용할지의 여부
+            sess=None,   #TensorFlow 세션
     ):
         self.n_actions = n_actions
         self.n_features = n_features
@@ -36,9 +36,9 @@ class DuelingDQN:
 
         self.dueling = dueling      # decide to use dueling DQN or not
 
-        self.learn_step_counter = 0
-        self.memory = np.zeros((self.memory_size, n_features*2+2))
-        self._build_net()
+        self.learn_step_counter = 0    #학습이 몇 번 반복되었는지를 기록하는 변수 -> 일정 횟수마다 target네트워크를 갱신하는데 사용됨
+        self.memory = np.zeros((self.memory_size, n_features*2+2))   #경험 저장할 배열 초기화
+        self._build_net()  #신경망(정책망, 타겟망)두 개를 만듦
         t_params = tf.get_collection('target_net_params')
         e_params = tf.get_collection('eval_net_params')
         self.replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
@@ -50,9 +50,9 @@ class DuelingDQN:
             self.sess = sess
         if output_graph:
             tf.summary.FileWriter("logs/", self.sess.graph)
-        self.cost_his = []
+        self.cost_his = []   #학습 중 발생하는 손실(loss) 저장해두는 리스트트
 
-    def _build_net(self):
+    def _build_net(self):         #네트워크 생성 
         def build_layers(s, c_names, n_l1, w_initializer, b_initializer):
             with tf.variable_scope('l1'):
                 w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
