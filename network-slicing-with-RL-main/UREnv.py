@@ -4,12 +4,12 @@ import numpy as np
 import random
 import itertools
 import matplotlib.pyplot as plt
+
 # parameters of celluar environment
 ser_cat_vec = ['volte', 'embb_general', 'urllc']
 band_whole_no = 10 * 10**6
 band_per = 1 * 10**6
 qoe_weight = [1, 4, 6]
-
 se_weight = 0.01
 dl_mimo = 64
 learning_window = 2000
@@ -27,22 +27,22 @@ total_timesteps=2000
 
 class MyEnv(Env):
     def __init__(self,
-        BS_pos = np.array([0,0]),
-        BS_radius = 40,
-        BS_tx_power = 16, #unit is dBW, 46dBm
-        UE_max_no = 100, 
+        BS_pos = np.array([0,0]), #기지국 위치
+        BS_radius = 40, #기지국 신호 범위(셀 반지름)
+        BS_tx_power = 16, #unit is dBW, 46dBm, 기지국 전송 파워
+        UE_max_no = 100, #최대 사용자 수
         Queue_max = 5,
-        noise_PSD = -204, # -174 dbm/Hz
+        noise_PSD = -204, # -174 dbm/Hz, 노이즈 파워 스펙트럼 밀도
         chan_mod = '36814',
         carrier_freq = 2 * 10 ** 9, #2 GHz
         time_subframe = 0.5 * 10 ** (-3), # by LTE, 0.5 ms
-        ser_cat = ['volte','embb_general','urllc'],
-        band_whole = 10 * 10 ** 6, # 10MHz
+        ser_cat = ['volte','embb_general','urllc'], #서비스 종류
+        band_whole = 10 * 10 ** 6, # 10MHz(전체 대역폭)
         schedu_method = 'round_robin',
-        ser_prob = np.array([6,6,1], dtype=np.float32),
-        dl_mimo = 64,
+        ser_prob = np.array([6,6,1], dtype=np.float32), #사용자 서비스 비율
+        dl_mimo = 64, #MIMO 안테나 수
         rx_gain = 20, #dB
-        learning_windows = 60000,
+        learning_windows = 60000, #학습 윈도우 크기(시간 간격 기준)
         t=0,
         ):
         self.BS_tx_power = BS_tx_power
@@ -66,7 +66,6 @@ class MyEnv(Env):
         dis = np.sqrt(np.sum((BS_pos - UE_pos) **2 , axis = 1)) / 1000 # unit changes to km
         self.path_loss = 145.4 + 37.5 * np.log10(dis).reshape(-1,1)
         self.learning_windows = round(learning_windows*self.time_subframe,4)
-
         self.ser_cat = ser_cat
         self.t=t
         if len(self.ser_cat) > 1:
