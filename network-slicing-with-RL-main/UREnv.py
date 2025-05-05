@@ -66,10 +66,10 @@ class MyEnv(Env):
         dis = np.sqrt(np.sum((BS_pos - UE_pos) **2 , axis = 1)) / 1000 # unit changes to km
         self.path_loss = 145.4 + 37.5 * np.log10(dis).reshape(-1,1)
         self.learning_windows = round(learning_windows*self.time_subframe,4)
-        self.ser_cat = ser_cat
+        self.ser_cat = ser_cat #서비스 종류(volte, embb, urllc)
         self.t=t
         if len(self.ser_cat) > 1:
-            self.band_ser_cat = np.zeros(len(ser_cat))
+            self.band_ser_cat = np.zeros(len(ser_cat)) #각 서비스가 얼마나 주파수대역폭을 가질지를 기록할 배열을 초기에 0으로 세팅
             if len(ser_prob) == len(self.ser_cat):
                 self.ser_prob = ser_prob / np.sum(ser_prob) 
             else:
@@ -79,7 +79,7 @@ class MyEnv(Env):
             self.band_ser_cat = self.band_whole
 
         self.UE_cat = np.random.choice(self.ser_cat, self.UE_max_no, p=self.ser_prob) #TBD
-        self.tx_pkt_no = np.zeros(len(self.ser_cat))
+        self.tx_pkt_no = np.zeros(len(self.ser_cat)) #전송한 패킷 수 초기화화
 
 
         #observation and action space
