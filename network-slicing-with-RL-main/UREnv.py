@@ -269,7 +269,27 @@ class MyEnv(Env):
 
         self.bufferClear()
         
+ def provisioning(self):
+        UE_index = np.where(self.UE_band != 0) 
+        self.channel_model()
+        rx_power = 10 ** ((self.BS_tx_power - self.chan_loss + self.UE_rx_gain)/10)
+        rx_power = rx_power.reshape(1,-1)[0]
+        rate = np.zeros(self.UE_max_no)
+        # print("UE_band:  ",self.UE_band)
+        rate[UE_index] = self.UE_band[UE_index] * np.log10(1 + rx_power[UE_index] / ( 10 **(self.noise_PSD /10) * self.UE_band[UE_index] )) * self.dl_mimo
+        buffer = np.sum(self.UE_buffer,axis=0)
+        UE_index_b = np.where(buffer != 0) 
 
+        for ue_id in UE_index_b[0]:
+            self.UE_latency[:,ue_id]=latencyUpdate(self.UE_latency[:,ue_id],self.UE_buffer[:,ue_id],self.time_subframe)
+        
+        for ue_id in UE_index[0]: 
+            self.UE_buffer[:,ue_id]=bufferUpdate(self.UE_buffer[:,ue_id],rate[ue_id],self.time_subframe)  
+
+        self.store_reward(rate)
+
+        self.bufferClear()
+    
     def activity(self): #https://www.ngmn.org/fileadmin/user_upload/NGMN_Radio_Access_Performance_Evaluation_Methodology.pdf
         # VoLTE uses the VoIP model
         # embb_general uses the video streaming model
