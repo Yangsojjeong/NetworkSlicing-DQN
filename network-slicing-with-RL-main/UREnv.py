@@ -95,31 +95,34 @@ class MyEnv(Env):
         print("##################################")
         
         #this_action = set(self._action_to_direction[action])
-        hold_action = get_act(action)
-        this_action=np.multiply(hold_action,10**6)
-        self.countReset()
-        self.activity()
+        hold_action = get_act(action) #에이전트가 선택한 행동번호 action을 실제 자원 분배 리스트로 바꿈
+        #ex) action=2 -> hold_action=[1,3,6](대역폭 비율)
+        this_action=np.multiply(hold_action,10**6) #[MHz]단위를 [Hz]단위로 변경
+        self.countReset() #전송 성공한 패킷 수, 총 보낸 패킷 수, SE 기록 등을 초기화
+        self.activity() #각 사용자(UE)에게 패킷을 생성하고 버퍼에 저장
         # Select and perform an action
         #observations.append(observation.tolist())
         print("actionnnnnnnnnnnn :", this_action)
         action0.append(this_action[0])
         action1.append(this_action[1])
         action2.append(this_action[2])
+        #각 서비스에 할당된 대역폭을 따로 기록
+        
         # print("teeeeeeeeeeest", action0)
-        self.band_ser_cat = this_action
+        self.band_ser_cat = this_action #세가지 서비스에 각각 얼마의 대역폭을 할당할지 자징
         #prev_observation = observation
 
-        for i in itertools.count():
-            self.scheduling()
-            self.provisioning()
+        for i in itertools.count(): #학습 윈도우가 끝날 때까지 아래 작업 반복
+            self.scheduling() #할당된 대역폭을 사용자들에게 분배
+            self.provisioning() #사용자들이 받은 리소스로 버퍼에 쌓인 데이터 전송
             if i == (learning_window - 1):
                 break
             else:
-                self.bufferClear()
-                self.activity()
+                self.bufferClear() #다 전송된 패킷의 버퍼 정리리
+                self.activity() #새로 도착한 데이터를 다시 버퍼에 채움
         
-        qoe, se = self.get_reward()
-        threshold = 6 + 4 * self.t / (total_timesteps/1.5) 
+        qoe, se = self.get_reward() #각 서비스의 QoE, SE 계산
+        threshold = 6 + 4 * self.t / (total_timesteps/1.5) #시간이 지날수록 보상 기분이 올라가도록 임계값 설정
         # print("tresh",threshold)
 
         utility, reward = calc_reward(qoe, se, threshold)
@@ -132,11 +135,11 @@ class MyEnv(Env):
         rewards.append(reward)
         # kpis.append(kpi)
         # print("num of packets: ",self.tx_pkt_no)
-        observation = state_update(self.tx_pkt_no, self.ser_cat)
+        observation = state_update(self.tx_pkt_no, self.ser_cat) #다음 상태 계산(에이전트가 다음 행동을 할 때 입력값이 됨)
         # print("z score of packets: ",observation)
         # observation = torch.from_numpy(observation).unsqueeze(0).to(torch.float)
         done=False
-        if self.t == total_timesteps:
+        if self.t == total_timesteps: #학습 끝났으면 그 동안의 행동,QoE,SE,유틸리티를 모두 그래프로 시각화화
             plt.figure(3)
             plt.plot( np.array(action0),'s',markersize=1, c='r', label='volte')
             
@@ -215,30 +218,31 @@ class MyEnv(Env):
 
             done = True
         info={}
-        self.t += 1
+        self.t += 1 #시간(step) 1 증가
         if done==False:
             print("t :",self.t)
 
         print("##################################")
-        return observation, reward, done, info
+        return observation, reward, done, info #에이전트가 사용할 결과값 반환환
 
     def render(self, mode):
         self.mode =mode
         pass
 
-    def reset(self):
-      self.t=0
-      self.bufferClear()
-      self.countReset()  
+    def reset(self): #환경을 리셋할 때 실행되는 함수
+      self.t=0 #타임스텝을 0으로 초기화
+      self.bufferClear() #사용자들의 버퍼랑 지연시간(latency) 관련 데이터를 모두 초기화
+      self.countReset()  #전송성공패킷수&전체패킷수&시스템 throughput 모두 초기화
     #   self.activity()
-      return state_update(self.tx_pkt_no, self.ser_cat)
+      return state_update(self.tx_pkt_no, self.ser_cat) #현재 보낸 패킷 수를 기반으로 상태를 계산해서 반환 -> 에이전트가 첫 행동을 선택할 때 입력값이 됨
     
-    def channel_model(self): 
+    def channel_model(self): #사용자와 기지국 사이의 채널 환경을 계산하는 함수
     
-        if self.chan_mod == '36814':
-            shadowing_var = 8 #rayleigh fading shadowing variance 8dB
+        if self.chan_mod == '36814': #채널 모델로 '36814'를 사용 중인지 확인
+            shadowing_var = 8 #rayleigh fading shadowing variance 8dB(쉐도잉 분산을 8dB로 설정)
             self.chan_loss = self.path_loss + np.random.normal(0,shadowing_var,self.UE_max_no).reshape(-1,1) 
-
+            #총 채널 손실 계산
+    
     def scheduling(self):
         self.UE_band = np.zeros(self.UE_max_no) # initializing
         if self.schedu_method == 'round_robin':
