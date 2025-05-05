@@ -8,7 +8,8 @@ tf.set_random_seed(42)
 
 
 class DuelingDQN:
-    def __init__(
+    def __init__
+    (
             self,
             n_actions,  #에이전트가 선택할 수 있는 행동의 개수
             n_features,  #상태(state)의 특징 수
@@ -37,7 +38,7 @@ class DuelingDQN:
         self.dueling = dueling      # decide to use dueling DQN or not
 
         self.learn_step_counter = 0    #학습이 몇 번 반복되었는지를 기록하는 변수 -> 일정 횟수마다 target네트워크를 갱신하는데 사용됨
-        self.memory = np.zeros((self.memory_size, n_features*2+2))   #경험 저장할 배열 초기화
+        self.memory = np.zeros((self.memory_size, n_features*2+2))   #(s,a,r,s')형태의 경험을 저장할 배열 초기화
         self._build_net()  #신경망(정책망, 타겟망)두 개를 만듦
         t_params = tf.get_collection('target_net_params')
         e_params = tf.get_collection('eval_net_params')
@@ -60,7 +61,7 @@ class DuelingDQN:
                 l1 = tf.nn.relu(tf.matmul(s, w1) + b1)
 
             if self.dueling:
-                # Dueling DQN  (dueling:상태의 가치V(s)와 행동별 이득A(s,a)를 분리해서 학습
+                # Dueling DQN  (dueling:상태의 가치V(s)와 행동별 이득A(s,a)를 분리해서 학습)
                 with tf.variable_scope('Value'):
                     w2 = tf.get_variable('w2', [n_l1, 1], initializer=w_initializer, collections=c_names)
                     b2 = tf.get_variable('b2', [1, 1], initializer=b_initializer, collections=c_names)
@@ -104,7 +105,7 @@ class DuelingDQN:
 
             self.q_next = build_layers(self.s_, c_names, n_l1, w_initializer, b_initializer) #target_net에서 계산된 Q(s', a') -> 타겟 Q계산에 사용(학습은 안됨, 고정된 네트워크)
 
-    def store_transition(self, s, a, r, s_):  #경험 리플레이 버퍼에 하나의 경험을 저장
+    def store_transition(self, s, a, r, s_):  #경험 리플레이 버퍼에 하나의 경험(s,a,r,s')을 저장
         if not hasattr(self, 'memory_counter'): # returns True if the specified object has the specified attribute, otherwise False .
             self.memory_counter = 0
         transition = np.hstack((s, [a, r], s_))  #하나의 경험을 만듦(s:현재상태/a:행동/r:보상/s_:다음상태)
