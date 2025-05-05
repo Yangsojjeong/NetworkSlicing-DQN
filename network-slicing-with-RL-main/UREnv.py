@@ -234,34 +234,23 @@ class MyEnv(Env):
       self.bufferClear() #사용자들의 버퍼랑 지연시간(latency) 관련 데이터를 모두 초기화
       self.countReset()  #전송성공패킷수&전체패킷수&시스템 throughput 모두 초기화
     #   self.activity()
-      return state_update(self.tx_pkt_no, self.ser_cat) #현재 보낸 패킷 수를 기반으로 상태를 계산해서 반환 -> 에이전트가 첫 행동을 선택할 때 입력값이 됨
-    
-    def channel_model(self): #사용자와 기지국 사이의 채널 환경을 계산하는 함수
-    
-        if self.chan_mod == '36814': #채널 모델로 '36814'를 사용 중인지 확인
-            shadowing_var = 8 #rayleigh fading shadowing variance 8dB(쉐도잉 분산을 8dB로 설정)
-            self.chan_loss = self.path_loss + np.random.normal(0,shadowing_var,self.UE_max_no).reshape(-1,1) 
-            #총 채널 손실 계산
-    
-    def scheduling(self):
-        self.UE_band = np.zeros(self.UE_max_no) # initializing
-        if self.schedu_method == 'round_robin':
+      return 줌
             ser_cat = len(self.ser_cat)
-            band_ser_cat = self.band_ser_cat
+            band_ser_cat = self.band_ser_cat #각 서비스에 할당된 전체 대역폭
             if (self.sys_clock * 10000) % (self.learning_windows * 10000) == (self.time_subframe * 10000):
                 self.ser_schedu_ind =  [0] * ser_cat
             #print("self.UE_buffer",self.UE_buffer)    
             for i in range(ser_cat): 
-                UE_index = np.where((self.UE_buffer[0,:]!=0) & (self.UE_cat == self.ser_cat[i]))[0]
-                UE_Active_No = len(UE_index)
+                UE_index = np.where((self.UE_buffer[0,:]!=0) & (self.UE_cat == self.ser_cat[i]))[0] #현재 데이터버퍼가 비어있지 않으며, 해당 서비스 카테고리에 속한 사용자들
+                UE_Active_No = len(UE_index) #전송할 데이터를 가진 사용자 수(활성 사용자 수)
                 if UE_Active_No != 0:
                     RB_No = band_ser_cat[i] // (180 * 10**3)
                     RB_round = RB_No // UE_Active_No
                     self.UE_band[UE_index] += 180 * 10**3 * RB_round
                     # print("UEEEEEEE",RB_No)
-                    RB_rem_no = int(RB_No - RB_round * UE_Active_No)
+                    RB_rem_no = int(RB_No - RB_round * UE_Active_No) #나누고 남은 RB(Resource Block) 개수 계산
                     left_no = np.where(UE_index > self.ser_schedu_ind[i])[0].size
-                    if left_no >= RB_rem_no:     
+                    if left_no >= RB_rem_no:     #남은 RB 재분배
                         UE_act_index = UE_index[np.where(np.logical_and(np.greater_equal(UE_index,self.ser_schedu_ind[i]),np.less(UE_index, RB_rem_no + self.ser_schedu_ind[i])))]
                         if UE_act_index.size != 0:
                             self.UE_band[UE_act_index] += 180 * 10**3
@@ -273,7 +262,7 @@ class MyEnv(Env):
                         self.UE_band[np.hstack((UE_act_index_par1,UE_act_index_par2))] += 180 * 10**3
                         self.ser_schedu_ind[i] = UE_act_index_par2[-1]+1
                 
-        elif self.schedu_method == 'round_robin_nons':
+        elif self.schedu_method == 'round_robin_nons': #이 방식은 카테고리 구분없이 모든 사용자에게 균등하게 대역폭 나눠줌
             band_whole = self.band_whole
             if self.sys_clock == self.time_subframe:
                 self.ser_schedu_ind =  0
