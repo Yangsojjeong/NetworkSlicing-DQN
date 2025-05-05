@@ -234,7 +234,7 @@ class MyEnv(Env):
       self.bufferClear() #사용자들의 버퍼랑 지연시간(latency) 관련 데이터를 모두 초기화
       self.countReset()  #전송성공패킷수&전체패킷수&시스템 throughput 모두 초기화
     #   self.activity()
-      return 줌
+      return 
             ser_cat = len(self.ser_cat)
             band_ser_cat = self.band_ser_cat #각 서비스에 할당된 전체 대역폭
             if (self.sys_clock * 10000) % (self.learning_windows * 10000) == (self.time_subframe * 10000):
@@ -249,60 +249,7 @@ class MyEnv(Env):
                     self.UE_band[UE_index] += 180 * 10**3 * RB_round
                     # print("UEEEEEEE",RB_No)
                     RB_rem_no = int(RB_No - RB_round * UE_Active_No) #나누고 남은 RB(Resource Block) 개수 계산
-                    left_no = np.where(UE_index > self.ser_schedu_ind[i])[0].size
-                    if left_no >= RB_rem_no:     #남은 RB 재분배
-                        UE_act_index = UE_index[np.where(np.logical_and(np.greater_equal(UE_index,self.ser_schedu_ind[i]),np.less(UE_index, RB_rem_no + self.ser_schedu_ind[i])))]
-                        if UE_act_index.size != 0:
-                            self.UE_band[UE_act_index] += 180 * 10**3
-                            
-                            self.ser_schedu_ind[i] = UE_act_index[-1] + 1 
-                    else:
-                        UE_act_index_par1 = UE_index[np.where(UE_index>self.ser_schedu_ind[i])]
-                        UE_act_index_par2 = UE_index[0:RB_rem_no-left_no]
-                        self.UE_band[np.hstack((UE_act_index_par1,UE_act_index_par2))] += 180 * 10**3
-                        self.ser_schedu_ind[i] = UE_act_index_par2[-1]+1
-                
-        elif self.schedu_method == 'round_robin_nons': #이 방식은 카테고리 구분없이 모든 사용자에게 균등하게 대역폭 나눠줌
-            band_whole = self.band_whole
-            if self.sys_clock == self.time_subframe:
-                self.ser_schedu_ind =  0
-                
-            UE_index = np.where((self.UE_buffer[0,:]!=0))[0]
-            
-            UE_Active_No = len(UE_index)
-            if UE_Active_No != 0:
-                RB_No = band_whole // (180 * 10**3)
-                RB_round = RB_No // UE_Active_No
-                
-                self.UE_band[UE_index] += 180 * 10**3 * RB_round
-                
-
-                RB_rem_no = RB_No % UE_Active_No
-                left_no = np.where(UE_index > self.ser_schedu_ind)[0].size
-                if left_no >= RB_rem_no:     
-                    UE_act_index = UE_index[np.where(np.logical_and(np.greater_equal(UE_index,self.ser_schedu_ind),np.less(UE_index, RB_rem_no + self.ser_schedu_ind)))]
-                    if UE_act_index.size != 0:
-                        self.UE_band[UE_act_index] += 180 * 10**3
-                        self.ser_schedu_ind = UE_act_index[-1] + 1 
-                else:
-                    UE_act_index_par1 = UE_index[np.where(UE_index>self.ser_schedu_ind)]
-                    UE_act_index_par2 = UE_index[0:RB_rem_no-left_no]
-                    self.UE_band[np.hstack((UE_act_index_par1,UE_act_index_par2))] += 180 * 10**3
-                    self.ser_schedu_ind = UE_act_index_par2[-1]+1
-            if (self.sys_clock * 10000) % (self.learning_windows * 10000) == (self.time_subframe * 10000):
-                self.band_ser_cat = np.zeros(len(self.ser_cat))
-            for i in range(len(self.ser_cat)):
-                if (self.sys_clock * 10000) % (self.learning_windows * 10000) == (self.time_subframe * 10000):
-                    self.band_ser_cat[i] = np.sum(self.UE_band[self.UE_cat == self.ser_cat[i]])
-                else: 
-                    self.band_ser_cat[i] += np.sum(self.UE_band[self.UE_cat == self.ser_cat[i]])
-                    if (self.sys_clock * 10000) % (self.learning_windows * 10000) == 0:
-                        lw = (self.learning_windows * 10000)/(self.time_subframe * 10000)
-                        self.band_ser_cat[i] = self.band_ser_cat[i]/lw
-        # print("UEEEEEEE",self.UE_band)
-
-    def provisioning(self):
-        UE_index = np.where(self.UE_band != 0) 
+                    left_no
         self.channel_model()
         rx_power = 10 ** ((self.BS_tx_power - self.chan_loss + self.UE_rx_gain)/10)
         rx_power = rx_power.reshape(1,-1)[0]
