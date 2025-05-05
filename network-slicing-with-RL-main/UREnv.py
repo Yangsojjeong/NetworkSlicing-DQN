@@ -269,6 +269,12 @@ class MyEnv(Env):
 
         self.bufferClear()
 
+ def channel_model(self): 
+    
+        if self.chan_mod == '36814':
+            shadowing_var = 8 #rayleigh fading shadowing variance 8dB
+            self.chan_loss = self.path_loss + np.random.normal(0,shadowing_var,self.UE_max_no).reshape(-1,1) 
+
 def scheduling(self):
         self.UE_band = np.zeros(self.UE_max_no) # initializing
         if self.schedu_method == 'round_robin':
