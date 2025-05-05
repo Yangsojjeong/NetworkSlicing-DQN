@@ -13,13 +13,13 @@ class DuelingDQN:
             self,
             n_actions,  #에이전트가 선택할 수 있는 행동의 개수
             n_features,  #상태(state)의 특징 수
-            learning_rate=0.001,   #학습률
+            learning_rate=0.001,   #학습률(얼마나 빠르게 학습할지)
             reward_decay=0.9,    #감가율(할인율)
             e_greedy=0.9,   #e-greedy 정책에서 행동 선택 시 랜덤이 아닐 확률
             replace_target_iter=200,   #몇 번 학습마다 target네트워크를 갱신할지
             memory_size=500,  #경험을 저장하는 버퍼 크기
-            batch_size=32,   #학습할 때 샘플링할 미니배치 크기
-            e_greedy_increment=None, #e증가값
+            batch_size=32,   #학습할 때 한 번에 꺼내오는 데이터 수
+            e_greedy_increment=None, #e를 조금씩 증가시킬지 여부
             output_graph=False,
             dueling=True,   #Dueling 구조를 사용할지의 여부
             sess=None,   #TensorFlow 세션
@@ -34,15 +34,15 @@ class DuelingDQN:
         self.batch_size = batch_size
         self.epsilon_increment = e_greedy_increment
         self.epsilon = 0 if e_greedy_increment is not None else self.epsilon_max
-
+        
         self.dueling = dueling      # decide to use dueling DQN or not
-
+        
         self.learn_step_counter = 0    #학습이 몇 번 반복되었는지를 기록하는 변수 -> 일정 횟수마다 target네트워크를 갱신하는데 사용됨
         self.memory = np.zeros((self.memory_size, n_features*2+2))   #(s,a,r,s')형태의 경험을 저장할 배열 초기화
         self._build_net()  #신경망(정책망, 타겟망)두 개를 만듦
         t_params = tf.get_collection('target_net_params')
         e_params = tf.get_collection('eval_net_params')
-        self.replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
+        self.replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)] #일정 횟수마다 두 네트워크의 파라미터를 동일하게 동기화
 
         if sess is None:
             self.sess = tf.Session()
@@ -54,7 +54,7 @@ class DuelingDQN:
         self.cost_his = []   #학습 중 발생하는 손실(loss) 저장해두는 리스트트
 
     def _build_net(self):         #네트워크 생성 
-        def build_layers(s, c_names, n_l1, w_initializer, b_initializer):   #신경망 구조 생성
+        def build_layers(s, c_names, n_l1, w_initializer, b_initializer):   #Q(s,a)를 계산하는 신경망망 생성
             with tf.variable_scope('l1'):
                 w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
                 b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
@@ -126,7 +126,7 @@ class DuelingDQN:
             action = np.random.randint(0, self.n_actions)  #그렇지 않으면 랜덤하게 행동 선택->탐험
         return action 
 
-    def learn(self):
+    def learn(self): #미니배치로 샘플을 뽑고 Q-Learning 학습
         if self.learn_step_counter % self.replace_target_iter == 0:
             self.sess.run(self.replace_target_op)
             print('\ntarget_params_replaced\n')       #일정 횟수마다 target network를 eval network로 교체
