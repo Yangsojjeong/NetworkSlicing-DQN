@@ -268,7 +268,76 @@ class MyEnv(Env):
         self.store_reward(rate)
 
         self.bufferClear()
-        
+
+def scheduling(self):
+        self.UE_band = np.zeros(self.UE_max_no) # initializing
+        if self.schedu_method == 'round_robin':
+            ser_cat = len(self.ser_cat)
+            band_ser_cat = self.band_ser_cat
+            if (self.sys_clock * 10000) % (self.learning_windows * 10000) == (self.time_subframe * 10000):
+                self.ser_schedu_ind =  [0] * ser_cat
+            #print("self.UE_buffer",self.UE_buffer)    
+            for i in range(ser_cat): 
+                UE_index = np.where((self.UE_buffer[0,:]!=0) & (self.UE_cat == self.ser_cat[i]))[0]
+                UE_Active_No = len(UE_index)
+                if UE_Active_No != 0:
+                    RB_No = band_ser_cat[i] // (180 * 10**3)
+                    RB_round = RB_No // UE_Active_No
+                    self.UE_band[UE_index] += 180 * 10**3 * RB_round
+                    # print("UEEEEEEE",RB_No)
+                    RB_rem_no = int(RB_No - RB_round * UE_Active_No)
+                    left_no = np.where(UE_index > self.ser_schedu_ind[i])[0].size
+                    if left_no >= RB_rem_no:     
+                        UE_act_index = UE_index[np.where(np.logical_and(np.greater_equal(UE_index,self.ser_schedu_ind[i]),np.less(UE_index, RB_rem_no + self.ser_schedu_ind[i])))]
+                        if UE_act_index.size != 0:
+                            self.UE_band[UE_act_index] += 180 * 10**3
+                            
+                            self.ser_schedu_ind[i] = UE_act_index[-1] + 1 
+                    else:
+                        UE_act_index_par1 = UE_index[np.where(UE_index>self.ser_schedu_ind[i])]
+                        UE_act_index_par2 = UE_index[0:RB_rem_no-left_no]
+                        self.UE_band[np.hstack((UE_act_index_par1,UE_act_index_par2))] += 180 * 10**3
+                        self.ser_schedu_ind[i] = UE_act_index_par2[-1]+1
+                
+        elif self.schedu_method == 'round_robin_nons':
+            band_whole = self.band_whole
+            if self.sys_clock == self.time_subframe:
+                self.ser_schedu_ind =  0
+                
+            UE_index = np.where((self.UE_buffer[0,:]!=0))[0]
+            
+            UE_Active_No = len(UE_index)
+            if UE_Active_No != 0:
+                RB_No = band_whole // (180 * 10**3)
+                RB_round = RB_No // UE_Active_No
+                
+                self.UE_band[UE_index] += 180 * 10**3 * RB_round
+                
+
+                RB_rem_no = RB_No % UE_Active_No
+                left_no = np.where(UE_index > self.ser_schedu_ind)[0].size
+                if left_no >= RB_rem_no:     
+                    UE_act_index = UE_index[np.where(np.logical_and(np.greater_equal(UE_index,self.ser_schedu_ind),np.less(UE_index, RB_rem_no + self.ser_schedu_ind)))]
+                    if UE_act_index.size != 0:
+                        self.UE_band[UE_act_index] += 180 * 10**3
+                        self.ser_schedu_ind = UE_act_index[-1] + 1 
+                else:
+                    UE_act_index_par1 = UE_index[np.where(UE_index>self.ser_schedu_ind)]
+                    UE_act_index_par2 = UE_index[0:RB_rem_no-left_no]
+                    self.UE_band[np.hstack((UE_act_index_par1,UE_act_index_par2))] += 180 * 10**3
+                    self.ser_schedu_ind = UE_act_index_par2[-1]+1
+            if (self.sys_clock * 10000) % (self.learning_windows * 10000) == (self.time_subframe * 10000):
+                self.band_ser_cat = np.zeros(len(self.ser_cat))
+            for i in range(len(self.ser_cat)):
+                if (self.sys_clock * 10000) % (self.learning_windows * 10000) == (self.time_subframe * 10000):
+                    self.band_ser_cat[i] = np.sum(self.UE_band[self.UE_cat == self.ser_cat[i]])
+                else: 
+                    self.band_ser_cat[i] += np.sum(self.UE_band[self.UE_cat == self.ser_cat[i]])
+                    if (self.sys_clock * 10000) % (self.learning_windows * 10000) == 0:
+                        lw = (self.learning_windows * 10000)/(self.time_subframe * 10000)
+                        self.band_ser_cat[i] = self.band_ser_cat[i]/lw
+        # print("UEEEEEEE",self.UE_band)
+
  def provisioning(self):
         UE_index = np.where(self.UE_band != 0) 
         self.channel_model()
